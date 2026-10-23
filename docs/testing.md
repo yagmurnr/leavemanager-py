@@ -8,12 +8,15 @@
 ## Frameworks & layout
 - **pytest** (`requirements-dev.txt`) ve Flask test client (`app.test_client()`). Gerçek sunucu açılmaz, port dinlenmez.
 - Testler `tests/` altında durur: `tests/test_<modül>.py`, `test_<davranış>`.
-- **Bugün (bootstrap):** henüz test yok. `scripts/check` iki adım çalıştırır: `lint` (ruff) ve
-  `smoke` (üç sayfanın 200 döndüğü ve sayfa içeriğinin geldiği, tek satırlık bir kontrol). `smoke` bir
-  davranış testi değildir, sadece uygulamanın açıldığını gösterir.
-- İlk test spec'i `test` adımını ekler: `test: "$(scripts/py)" -m pytest -q`. Hızlı ve yavaş ayrımı
-  gerekirse marker ile yapılır (`-m "not slow"` [fast] / `-m slow` full), dosya listesiyle yapılmaz (Two speeds, kural 4).
-- "Bugün"e bağlı kurallar (kıdem, geçmiş tarih) sabit bir tarihle test edilir; testler gerçek saate bağlı olamaz.
+- `scripts/check` üç adım çalıştırır: `lint` (ruff), `test` (pytest; `pytest.ini` içindeki `testpaths = tests`
+  seçicisiyle `tests/` altındaki her test) ve `smoke` (üç sayfanın 200 döndüğü, tek satırlık bir kontrol;
+  davranış testi değildir). Hızlı ve yavaş ayrımı gerekirse marker ile yapılır (`-m "not slow"` [fast] /
+  `-m slow` full), dosya listesiyle yapılmaz (Two speeds, kural 4).
+- `tests/conftest.py` her testte iki şeyi otomatik yapar: "bugün"ü 2026-10-23'e sabitler (`set_today`
+  fixture'ı ile test içinde değiştirilebilir) ve veriyi boş bir durumla başlatıp test sonunda geri yükler.
+  Testler gerçek saate ve seed verisine bağlı olamaz; veri `add_employee` ve `add_request` ile kurulur.
+- Karakterizasyon testleri (spec 0001): `tests/test_rules.py` (BR-1…BR-5) ve `tests/test_request_flow.py`
+  (BR-6…BR-10, OD-7). Test adı koruduğu kuralı anar; bir OD kapatılırken ilgili test bilerek değiştirilir.
 - E2E (tarayıcı) testi şimdilik yok. Eklendiğinde aracı ve uygulamanın ayağa kaldırılma sorumluluğu bir ADR ile belirlenir.
 
 ## What must be tested
