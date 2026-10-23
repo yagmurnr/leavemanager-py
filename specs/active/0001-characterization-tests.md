@@ -1,6 +1,6 @@
 # Spec 0001 — İş kuralları için karakterizasyon testleri (BR-1…BR-10)
 
-- Status: Approved
+- Status: In progress
 - Mode: lite
 - Plan: `specs/plans/0001-plan.md`
 
