@@ -27,6 +27,9 @@ def test_data_starts_empty_each_test():
     assert app.Db.next_id == 1
 
 
+# _a and _b are a pair: _b proves cleanup only when it runs after _a (pytest's default file
+# order). Run alone, _b still checks the reset state; test_data_starts_empty_each_test is the
+# order-independent proof.
 def test_data_written_here_is_gone_in_the_next_test_a():
     add_employee(emp_id=99)
     assert len(app.Db.employees) == 1
@@ -34,3 +37,4 @@ def test_data_written_here_is_gone_in_the_next_test_a():
 
 def test_data_written_here_is_gone_in_the_next_test_b():
     assert all(e["id"] != 99 for e in app.Db.employees)
+    assert app.Db.next_id == 1
