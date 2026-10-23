@@ -1,12 +1,14 @@
 """R-3, R-4, AC-13: no test sees the real clock or another test's data."""
 
-from datetime import date
+from datetime import date, datetime
 
 import app
 from tests.conftest import DEFAULT_TODAY, add_employee
 
 
 def test_clock_is_frozen_by_default():
+    # DEFAULT_TODAY may equal the real date; the identity check proves the clock is replaced.
+    assert app.datetime is not datetime
     assert app.datetime.now().date() == DEFAULT_TODAY
 
 
