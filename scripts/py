@@ -1,0 +1,10 @@
+#!/bin/sh
+# Çalışan bir Python yorumlayıcısının komutunu yazdırır: "$(scripts/py)" -m ruff ...
+# Sıra: proje .venv'i, sonra py launcher (Windows), sonra PATH. Windows'taki Microsoft Store
+# "python"/"python3" kısayolu hiç denenmez; Linux/CI'da py yoksa hemen atlanır.
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+for c in "$ROOT/.venv/Scripts/python.exe" "$ROOT/.venv/bin/python" py python3 python; do
+  if "$c" -c "import sys" >/dev/null 2>&1; then echo "$c"; exit 0; fi
+done
+echo "scripts/py: çalışan bir Python yorumlayıcısı bulunamadı" >&2
+exit 1
