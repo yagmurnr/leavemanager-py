@@ -15,6 +15,9 @@
 - `tests/conftest.py` her testte iki şeyi otomatik yapar: "bugün"ü 2026-10-23'e sabitler (`set_today`
   fixture'ı ile test içinde değiştirilebilir) ve veriyi boş bir durumla başlatıp test sonunda geri yükler.
   Testler gerçek saate ve seed verisine bağlı olamaz; veri `add_employee` ve `add_request` ile kurulur.
+  Testler yardımcıları `from tests.conftest import …` ile alır; bu conftest'i ikinci bir kopya olarak yükler.
+  `_Clock` ya da `FrozenDatetime` bu yolla import edilmez (fixture'ın kullandığı nesne değildir); saat yalnızca
+  `set_today` ile değiştirilir. Yardımcıların `tests/helpers.py`'ye taşınması refactor spec'ine bırakıldı (spec 0001, F-3).
 - Karakterizasyon testleri (spec 0001): `tests/test_rules.py` (BR-1…BR-5) ve `tests/test_request_flow.py`
   (BR-6…BR-10, OD-7). Test adı koruduğu kuralı anar; bir OD kapatılırken ilgili test bilerek değiştirilir.
 - E2E (tarayıcı) testi şimdilik yok. Eklendiğinde aracı ve uygulamanın ayağa kaldırılma sorumluluğu bir ADR ile belirlenir.
