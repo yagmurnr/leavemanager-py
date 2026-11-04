@@ -1,6 +1,6 @@
 # Spec 0003 — Giriş ve oturum
 
-- Status: Approved
+- Status: In progress
 - Mode: lite
 - Plan: `specs/plans/0003-plan.md`
 
