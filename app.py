@@ -2,10 +2,16 @@
 # LeaveManager - Personel Izin Takip Sistemi
 # (c) 2015 - Ic gelistirme. Sorumlu: Ahmet
 # NOT: Bu dosyaya dokunmadan once Ahmet'e sor. (Ahmet 2019'da ayrildi)
+import os
+
 from flask import Flask, request, redirect, render_template
 from datetime import datetime, date
 
 app = Flask(__name__)
+# Oturum gizli anahtari koda yazilmaz, ortamdan okunur (docs/security.md, Secrets).
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 # ---------------------------------------------------------------
 # "Veritabani" - simdilik memory'de, sonra SQL'e gecilecek (2016)
@@ -14,6 +20,8 @@ class Db:
     employees = []
     requests = []
     next_id = 1
+    # kullanici adi -> {"password_hash": ..., "employee_id": ...}; LEAVEMANAGER_USERS dosyasindan yuklenir
+    accounts = {}
 
 def seed():
     Db.employees = [
