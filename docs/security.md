@@ -17,13 +17,20 @@ Uygulama yalnızca şirket içinde kullanılır ve internete açılmaz. Veri, ki
 - **Bilinen açıklar (bugünkü `app.py`):**
   1. ~~**Kayıtlı XSS**~~ — kapatıldı (spec 0002): sayfalar `templates/` altındaki autoescape'li şablonlardan üretiliyor.
   2. ~~**`debug=True` kalıcı**~~ — kapatıldı (spec 0002): debug yalnızca `FLASK_DEBUG=1` ile açılıyor; beklenmeyen hata genel bir sayfa gösteriyor. `S201` taban çizgisinden silindi.
-  3. **Kimlik doğrulama yok** (aşağıda; spec 0003).
+  3. **Kimlik doğrulama** — giriş eklendi (spec 0003); rol bazlı yetki hâlâ yok (spec 0004, aşağıda).
 
   Her biri bir spec ile kapatılır. Kapatılana kadar uygulama `localhost` dışına açılmaz.
   Hata mesajındaki iç kod ve dahili telefon (`ERR-412 … dahili 4127`) hâlâ duruyor; `docs/domain.md` OD-7 ile kapanır.
 
 ## AuthN / AuthZ
-- **Bugün:** kimlik doğrulama yok. Sayfaya ulaşabilen herkes, herhangi bir personel adına talep girebilir.
+- **Bugün (spec 0003):** giriş zorunlu. Giriş ekranı dışındaki her sayfa oturum ister. Hesaplar
+  `LEAVEMANAGER_USERS` ortam değişkeninin gösterdiği JSON dosyasında, şifreler yalnızca hash olarak
+  (`flask --app app hash-password`) tutulur; dosya depoya girmez (`users.json` gitignore'da,
+  biçim `users.example.json`). Oturum çerezi `HttpOnly` ve `SameSite=Lax`; `SECRET_KEY` yoksa
+  `python app.py` başlamaz. Hatalı giriş loglanır, kullanıcı adı ve şifre loglanmaz.
+- **Henüz yok:** rol bazlı yetki. Giriş yapan herkes bütün verileri görür ve herkes adına talep
+  girebilir (spec 0004). Formlarda CSRF token'ı yok; `SameSite=Lax` başka siteden gelen POST'a
+  oturum çerezini eklemez, tam koruma 0004'e önerildi.
 - **Hedef (ilk özellik adayı):** varsayılan olarak her şey reddedilir. Personel yalnızca kendi
   talebini görür ve girer; İK bütün talepleri ve bakiyeleri görür; onaylama ve reddetme yalnızca İK
   rolüyle yapılır. Yetki kontrolü `service` katmanında yapılır; yalnızca arayüzde bir butonu gizlemek yeterli değildir.
