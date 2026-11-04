@@ -253,3 +253,10 @@ def test_login_screen_empty_state_has_labeled_fields(anon_client):
     assert '<label for="password">' in html and 'type="password"' in html
     assert 'type="submit"' in html
     assert "Yeni Talep" not in text  # no menu before login
+
+
+def test_login_screen_shows_username_as_plain_text(anon_client):
+    resp = _login(anon_client, username='<b>x</b>"', password=WRONG)
+    html = resp.get_data(as_text=True)
+    assert "<b>x</b>" not in html
+    assert "&lt;b&gt;x&lt;/b&gt;" in html
