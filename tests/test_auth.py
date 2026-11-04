@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 import runpy
 from datetime import date
 from pathlib import Path
@@ -252,6 +253,8 @@ def test_login_screen_empty_state_has_labeled_fields(anon_client):
     assert '<label for="username">' in html and 'id="username"' in html
     assert '<label for="password">' in html and 'type="password"' in html
     assert 'type="submit"' in html
+    # The button's own label ("Giriş" in the text above may come from the page heading).
+    assert re.search(r'<input type="submit" value="([^"]*)"', html).group(1) == "Giriş"
     assert "Yeni Talep" not in text  # no menu before login
 
 
