@@ -75,3 +75,65 @@ def test_pb4_insufficient_balance_message_text_unchanged(client):
     assert resp.status_code == 200
     assert ("HATA: ERR-412 NullReferenceGibi - bakiye yetersiz. IT'ye bildirin: dahili 4127"
             in visible_text(resp.get_data(as_text=True)))
+
+
+# --- CB: user data is shown as plain text, never turned into page elements ---
+
+def _post_request(client, reason):
+    resp = client.post("/new", data={"employee_id": "1", "start": "2026-11-02", "end": "2026-11-02",
+                                     "reason": reason})
+    assert resp.status_code == 302
+    assert len(app.Db.requests) == 1
+
+
+def test_cb1_script_in_reason_is_shown_as_text(client):
+    add_employee(emp_id=1, hire_date=date(2019, 6, 1))
+    _post_request(client, "<script>alert(1)</script>")
+    html = _page(client, "/requests")
+    assert "<script>" not in html
+    assert table_rows(html)[1][4] == "<script>alert(1)</script>"
+
+
+def test_cb1_img_onerror_in_reason_is_shown_as_text(client):
+    add_employee(emp_id=1, hire_date=date(2019, 6, 1))
+    _post_request(client, "<img src=x onerror=alert(1)>")
+    html = _page(client, "/requests")
+    assert "<img" not in html
+    assert table_rows(html)[1][4] == "<img src=x onerror=alert(1)>"
+
+
+HOSTILE_NAME = "<b>Ali</b>"
+HOSTILE_DEPT = "<i>IT</i>"
+
+
+def test_cb2_employee_name_and_department_escaped_on_dashboard(client):
+    add_employee(emp_id=1, name=HOSTILE_NAME, department=HOSTILE_DEPT)
+    html = _page(client, "/")
+    assert "<b>Ali" not in html and "<i>IT" not in html
+    assert table_rows(html)[1][:2] == [HOSTILE_NAME, HOSTILE_DEPT]
+
+
+def test_cb2_employee_name_escaped_on_requests(client):
+    add_employee(emp_id=1, name=HOSTILE_NAME, hire_date=date(2019, 6, 1))
+    _post_request(client, "x")
+    html = _page(client, "/requests")
+    assert "<b>Ali" not in html
+    assert table_rows(html)[1][0] == HOSTILE_NAME
+
+
+def test_cb2_employee_name_escaped_in_form_option(client):
+    # A quote must not close the option's value attribute and smuggle in a new element.
+    add_employee(emp_id=1, name="Ali'><script>x</script>")
+    html = _page(client, "/new")
+    assert "<script>" not in html
+    assert option_labels(html) == ["Ali'><script>x</script>"]
+
+
+def test_cb3_special_and_turkish_characters_readable_without_double_escape(client):
+    add_employee(emp_id=1, name="Gülşen Öztürk & Çağ", hire_date=date(2019, 6, 1))
+    reason = "Çocuğun \"okul\" töreni & veli toplantısı <1 gün> 'acil'"  # noqa: RUF001 - Turkish dotless i on purpose
+    _post_request(client, reason)
+    html = _page(client, "/requests")
+    assert table_rows(html)[1][0] == "Gülşen Öztürk & Çağ"
+    assert table_rows(html)[1][4] == reason
+    assert "&amp;amp;" not in html

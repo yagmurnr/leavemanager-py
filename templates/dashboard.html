@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<div class='kutu'>Bekleyen: <b>{{ bekleyen }}</b></div><div class='kutu'>Onaylanan: <b>{{ onaylanan }}</b></div><div class='kutu'>Reddedilen: <b>{{ reddedilen }}</b></div>
+<h3>Personel Bakiyeleri</h3><table><tr><th>Ad</th><th>Birim</th><th>Hak</th><th>Kullanilan</th><th>Kalan</th></tr>
+{% for row in rows %}
+<tr><td>{{ row.name }}</td><td>{{ row.department }}</td><td>{{ row.entitlement }}</td><td>{{ row.used }}</td><td>{{ row.remaining }}</td></tr>
+{% endfor %}
+</table>
+{% endblock %}
