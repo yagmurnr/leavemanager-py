@@ -240,3 +240,16 @@ def test_ac10_starts_with_secret_key_and_never_prints_it(monkeypatch, capsys):
     assert "app" in started
     out = capsys.readouterr()
     assert "cok-gizli-deger-123" not in out.out + out.err
+
+
+# --- QA gaps (plan 0003, VERIFY triage): login screen states and menu ---
+
+def test_login_screen_empty_state_has_labeled_fields(anon_client):
+    html = anon_client.get("/login").get_data(as_text=True)
+    text = visible_text(html)
+    for label in ("Kullanıcı adı", "Şifre", "Giriş"):  # noqa: RUF001 - Turkish dotless i on purpose
+        assert label in text
+    assert '<label for="username">' in html and 'id="username"' in html
+    assert '<label for="password">' in html and 'type="password"' in html
+    assert 'type="submit"' in html
+    assert "Yeni Talep" not in text  # no menu before login
