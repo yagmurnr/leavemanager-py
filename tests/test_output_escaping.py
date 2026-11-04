@@ -136,4 +136,7 @@ def test_cb3_special_and_turkish_characters_readable_without_double_escape(clien
     html = _page(client, "/requests")
     assert table_rows(html)[1][0] == "Gülşen Öztürk & Çağ"
     assert table_rows(html)[1][4] == reason
+    # Escaped exactly once: raw (unescaped) output and double escaping both fail here.
+    assert "töreni &amp; veli" in html
+    assert "&lt;1 gün&gt;" in html
     assert "&amp;amp;" not in html
