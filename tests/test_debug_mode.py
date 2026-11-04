@@ -43,8 +43,10 @@ def test_cb5_debug_on_only_with_env_flag(monkeypatch):
 
 
 def test_cb4_unexpected_error_shows_generic_page_without_traceback(client, monkeypatch):
-    # Production-like: not TESTING, so the error reaches the error page instead of the test.
+    # Production-like: the error reaches the error page instead of the test. PROPAGATE_EXCEPTIONS
+    # is pinned too, otherwise it follows DEBUG and a developer's FLASK_DEBUG=1 turns this red.
     monkeypatch.setitem(app.app.config, "TESTING", False)
+    monkeypatch.setitem(app.app.config, "PROPAGATE_EXCEPTIONS", False)
     add_employee(emp_id=1, hire_date=date(2019, 6, 1))
     # A request of an employee that does not exist makes the request list fail (plan 0001, R5).
     app.Db.requests.append({"id": 1, "employee_id": 999, "start": date(2026, 11, 2),
