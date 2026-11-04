@@ -260,3 +260,11 @@ def test_login_screen_shows_username_as_plain_text(anon_client):
     html = resp.get_data(as_text=True)
     assert "<b>x</b>" not in html
     assert "&lt;b&gt;x&lt;/b&gt;" in html
+
+
+def test_menu_shows_name_and_logout_link_when_logged_in(client):
+    add_employee(emp_id=1, name="Menü Kişisi")
+    html = client.get("/").get_data(as_text=True)
+    assert 'href="/logout"' in html
+    assert "Menü Kişisi" in visible_text(html)
+    assert "Çıkış" in visible_text(html)  # noqa: RUF001
