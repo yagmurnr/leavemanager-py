@@ -130,7 +130,6 @@ svc = LeaveService()
 BAD_LOGIN = "Kullanıcı adı veya şifre hatalı."  # noqa: RUF001 - Turkish UI text
 MISSING_LOGIN = "Kullanıcı adı ve şifre gerekli."  # noqa: RUF001 - Turkish UI text
 PUBLIC_ENDPOINTS = {"login", "static"}
-# Kullanici yoksa da bir hash karsilastirilir; sure farki kullanici adinin varligini ele vermez.
 _DUMMY_HASH = generate_password_hash("leavemanager-timing-dummy")
 
 def load_accounts(path):
@@ -163,15 +162,29 @@ def hash_password_command():
     password = click.prompt("Sifre", hide_input=True, confirmation_prompt=True)
     click.echo(generate_password_hash(password))
 
-def current_account():
-    username = session.get("username")
-    return Db.accounts.get(username) if username else None
+class AuthService:
+    """Hesap dogrulama; flask'i bilmez, web katmani veriye bunun uzerinden ulasir."""
 
-def find_employee(emp_id):
-    for e in Db.employees:
-        if e["id"] == emp_id:
-            return e
-    return None
+    def _employee(self, emp_id):
+        for e in Db.employees:
+            if e["id"] == emp_id:
+                return e
+        return None
+
+    def authenticate(self, username, password):
+        account = Db.accounts.get(username)
+        # Kullanici yoksa da bir hash karsilastirilir; sure farki kullanici adinin varligini ele vermez.
+        password_ok = check_password_hash(account["password_hash"] if account else _DUMMY_HASH, password)
+        return bool(account and password_ok and self._employee(account["employee_id"]))
+
+    def has_account(self, username):
+        return bool(username) and username in Db.accounts
+
+    def display_name(self, username):
+        emp = self._employee(Db.accounts[username]["employee_id"])
+        return emp["name"] if emp else username
+
+auth = AuthService()
 
 def safe_next(url):
     # Yalnizca uygulamanin kendi sayfalari; dis adres, "//host" ve ters bolu yok sayilir.
@@ -184,17 +197,14 @@ def safe_next(url):
 
 @app.before_request
 def require_login():
-    if request.endpoint in PUBLIC_ENDPOINTS or current_account() is not None:
+    if request.endpoint in PUBLIC_ENDPOINTS or auth.has_account(session.get("username")):
         return None
     return redirect("/login?" + urlencode({"next": request.full_path.rstrip("?")}))
 
 @app.context_processor
 def inject_user():
-    account = current_account()
-    if account is None:
-        return {"user_name": None}
-    emp = find_employee(account["employee_id"])
-    return {"user_name": emp["name"] if emp else session["username"]}
+    username = session.get("username")
+    return {"user_name": auth.display_name(username) if auth.has_account(username) else None}
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -205,9 +215,7 @@ def login():
     password = request.form.get("password", "")
     if not username or not password:
         return render_template("login.html", next_url=next_url, username=username, error=MISSING_LOGIN)
-    account = Db.accounts.get(username)
-    password_ok = check_password_hash(account["password_hash"] if account else _DUMMY_HASH, password)
-    if not (account and password_ok and find_employee(account["employee_id"])):
+    if not auth.authenticate(username, password):
         log.warning("Hatali giris denemesi")  # kullanici adi ve sifre loglanmaz (kisisel veri)
         return render_template("login.html", next_url=next_url, username=username, error=BAD_LOGIN)
     session.clear()  # oturum sabitlemeye karsi: girisle yeni oturum
