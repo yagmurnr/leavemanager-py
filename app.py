@@ -2,10 +2,13 @@
 # LeaveManager - Personel Izin Takip Sistemi
 # (c) 2015 - Ic gelistirme. Sorumlu: Ahmet
 # NOT: Bu dosyaya dokunmadan once Ahmet'e sor. (Ahmet 2019'da ayrildi)
+import json
 import logging
 import os
+import sys
 from urllib.parse import urlencode, urlsplit
 
+import click
 from flask import Flask, request, redirect, render_template, session, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, date
@@ -130,6 +133,36 @@ PUBLIC_ENDPOINTS = {"login", "static"}
 # Kullanici yoksa da bir hash karsilastirilir; sure farki kullanici adinin varligini ele vermez.
 _DUMMY_HASH = generate_password_hash("leavemanager-timing-dummy")
 
+def load_accounts(path):
+    """Hesap dosyasi (users.example.json bicimi): yalnizca hash'li kayitlar alinir, duz sifre reddedilir."""
+    if not path:
+        log.warning("LEAVEMANAGER_USERS tanimli degil; hic hesap yok, kimse giris yapamaz")
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            entries = json.load(f)
+    except (OSError, ValueError):
+        log.error("Hesap dosyasi okunamadi; hic hesap yuklenmedi")
+        return {}
+    accounts = {}
+    for i, entry in enumerate(entries):
+        if not (isinstance(entry, dict) and isinstance(entry.get("username"), str)
+                and isinstance(entry.get("password_hash"), str) and entry["password_hash"].count("$") >= 2
+                and isinstance(entry.get("employee_id"), int) and "password" not in entry):
+            log.error("Hesap dosyasindaki %d. kayit gecersiz (hash yok ya da duz sifre var); atlandi", i + 1)
+            continue
+        accounts[entry["username"]] = {"password_hash": entry["password_hash"],
+                                       "employee_id": entry["employee_id"]}
+    return accounts
+
+Db.accounts = load_accounts(os.environ.get("LEAVEMANAGER_USERS"))
+
+@app.cli.command("hash-password")
+def hash_password_command():
+    """Sifreyi gizli sorar ve hesap dosyasina yazilacak hash'i basar."""
+    password = click.prompt("Sifre", hide_input=True, confirmation_prompt=True)
+    click.echo(generate_password_hash(password))
+
 def current_account():
     username = session.get("username")
     return Db.accounts.get(username) if username else None
@@ -231,5 +264,7 @@ def internal_error(error):
     return render_template("error.html"), 500
 
 if __name__ == "__main__":
+    if not app.config["SECRET_KEY"]:
+        sys.exit("SECRET_KEY ortam degiskeni tanimli degil; uygulama baslatilmadi (README, Calistirma).")
     # Debug yalnizca FLASK_DEBUG=1 ortam degiskeniyle, gelistirici makinesinde acilir (docs/security.md).
     app.run(port=5000)

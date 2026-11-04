@@ -1,8 +1,13 @@
 """Spec 0003: login and session (AC-1…AC-10)."""
 
+import json
+import logging
+import runpy
 from datetime import date
+from pathlib import Path
 from urllib.parse import urlparse
 
+import flask
 import pytest
 from werkzeug.security import generate_password_hash
 
@@ -134,3 +139,68 @@ def test_ac8_account_without_employee_cannot_log_in(anon_client):
     assert resp.status_code == 200
     assert BAD_LOGIN in visible_text(resp.get_data(as_text=True))
     assert not _is_logged_in(anon_client)
+
+
+# --- AC-9: passwords never stored or shown in plain text ---
+
+def _hash_with_cli(password):
+    result = app.app.test_cli_runner().invoke(args=["hash-password"], input=f"{password}\n{password}\n")
+    assert result.exit_code == 0
+    return result.output.strip().splitlines()[-1]
+
+
+def test_ac9_passwords_stored_hashed(anon_client, tmp_path):
+    add_employee(emp_id=1)
+    hashed = _hash_with_cli(PASSWORD)
+    assert PASSWORD not in hashed
+    users = tmp_path / "users.json"
+    users.write_text(json.dumps([
+        {"username": "ayse", "password_hash": hashed, "employee_id": 1},
+        {"username": "duz", "password": PASSWORD, "employee_id": 1},  # plain text: refused
+        {"username": "ornek", "password_hash": "BURAYA: hash", "employee_id": 1},  # placeholder: refused
+    ]), encoding="utf-8")
+    app.Db.accounts = app.load_accounts(str(users))
+    assert set(app.Db.accounts) == {"ayse"}
+    assert PASSWORD not in json.dumps(app.Db.accounts)
+    assert _location(_login(anon_client)) == ("", "/")
+    assert _login(anon_client, username="duz").status_code == 200  # no such account
+
+
+def test_ac9_password_not_in_logs_or_pages(anon_client, caplog):
+    caplog.set_level(logging.DEBUG)
+    add_employee(emp_id=1)
+    add_account()
+    bodies = [_login(anon_client, password=WRONG).get_data(as_text=True),
+              _login(anon_client, username="olmayan").get_data(as_text=True)]
+    _login(anon_client)
+    bodies += [anon_client.get(p).get_data(as_text=True) for p in ("/", "/requests", "/new")]
+    assert "Hatali giris" in caplog.text  # the failures are logged ...
+    for secret in (PASSWORD, WRONG, "ayse", "olmayan"):
+        assert secret not in caplog.text  # ... without username or password
+    for body in bodies:
+        assert PASSWORD not in body and WRONG not in body
+
+
+# --- AC-10: no session key, no start ---
+
+def _start_app_directly(monkeypatch):
+    started = {}
+    monkeypatch.setattr(flask.Flask, "run", lambda self, *a, **kw: started.setdefault("app", self))
+    runpy.run_path(str(Path(app.__file__)), run_name="__main__")
+    return started
+
+
+def test_ac10_refuses_to_start_without_secret_key(monkeypatch, capsys):
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    with pytest.raises(SystemExit) as exit_info:
+        _start_app_directly(monkeypatch)
+    assert exit_info.value.code != 0
+    assert "SECRET_KEY" in str(exit_info.value.code)
+
+
+def test_ac10_starts_with_secret_key_and_never_prints_it(monkeypatch, capsys):
+    monkeypatch.setenv("SECRET_KEY", "cok-gizli-deger-123")
+    started = _start_app_directly(monkeypatch)
+    assert "app" in started
+    out = capsys.readouterr()
+    assert "cok-gizli-deger-123" not in out.out + out.err
