@@ -147,5 +147,11 @@ def new_request():
             return redirect("/requests")
     return render_template("new_request.html", employees=Db.employees)
 
+@app.errorhandler(500)
+def internal_error(error):
+    # Flask hatayi zaten logluyor; kullaniciya ic ayrinti gosterilmez (docs/conventions.md, Error handling).
+    return render_template("error.html"), 500
+
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)  # debug acik kalsin, kolay oluyor
+    # Debug yalnizca FLASK_DEBUG=1 ortam degiskeniyle, gelistirici makinesinde acilir (docs/security.md).
+    app.run(port=5000)
