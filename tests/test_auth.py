@@ -1,0 +1,136 @@
+"""Spec 0003: login and session (AC-1…AC-10)."""
+
+from datetime import date
+from urllib.parse import urlparse
+
+import pytest
+from werkzeug.security import generate_password_hash
+
+import app
+from tests.conftest import add_employee
+from tests.html_text import visible_text
+
+PASSWORD = "Dogru-Sifre-123"  # noqa: S105 - test credential
+WRONG = "yanlis-sifre"
+BAD_LOGIN = "Kullanıcı adı veya şifre hatalı."  # noqa: RUF001 - Turkish dotless i on purpose
+MISSING = "Kullanıcı adı ve şifre gerekli."  # noqa: RUF001 - Turkish dotless i on purpose
+
+
+def add_account(username="ayse", password=PASSWORD, employee_id=1):
+    # Cheap hash settings keep the suite fast; the app's own hashing is checked in AC-9.
+    app.Db.accounts[username] = {"password_hash": generate_password_hash(password, "pbkdf2:sha256:1000"),
+                                 "employee_id": employee_id}
+
+
+def _login(client, username="ayse", password=PASSWORD, next_url=None):
+    data = {"username": username, "password": password}
+    if next_url is not None:
+        data["next"] = next_url
+    return client.post("/login", data=data)
+
+
+def _location(resp):
+    loc = urlparse(resp.headers["Location"])
+    return loc.netloc, loc.path
+
+
+def _is_logged_in(client):
+    return client.get("/").status_code == 200
+
+
+@pytest.mark.parametrize("path", ["/", "/requests", "/new"])
+def test_ac1_anonymous_is_redirected_to_login_without_data(anon_client, path):
+    app.seed()
+    resp = anon_client.get(path)
+    assert resp.status_code == 302
+    assert _location(resp) == ("", "/login")
+    body = resp.get_data(as_text=True)
+    for e in app.Db.employees:
+        assert e["name"] not in body
+
+
+def test_ac2_anonymous_form_post_creates_no_request(anon_client):
+    add_employee(emp_id=1, hire_date=date(2019, 6, 1))
+    resp = anon_client.post("/new", data={"employee_id": "1", "start": "2026-11-02", "end": "2026-11-02",
+                                          "reason": "x"})
+    assert resp.status_code == 302
+    assert _location(resp) == ("", "/login")
+    assert app.Db.requests == []
+
+
+def test_ac3_login_returns_to_requested_page_and_shows_name(anon_client):
+    add_employee(emp_id=1, name="Ayşe Yılmaz")  # noqa: RUF001 - Turkish dotless i on purpose
+    add_account()
+    first = anon_client.get("/requests")
+    login_page = anon_client.get(first.headers["Location"])
+    assert login_page.status_code == 200
+    resp = _login(anon_client, next_url="/requests")
+    assert resp.status_code == 302
+    assert _location(resp) == ("", "/requests")
+    page = anon_client.get("/requests")
+    assert page.status_code == 200
+    assert "Ayşe Yılmaz" in visible_text(page.get_data(as_text=True))  # noqa: RUF001
+
+
+def test_ac3_login_without_next_goes_home(anon_client):
+    add_employee(emp_id=1)
+    add_account()
+    resp = _login(anon_client)
+    assert _location(resp) == ("", "/")
+    assert _is_logged_in(anon_client)
+
+
+def test_ac4_wrong_password_and_unknown_user_give_same_message(anon_client):
+    add_employee(emp_id=1)
+    add_account()
+    wrong = _login(anon_client, password=WRONG)
+    unknown = _login(anon_client, username="olmayan")
+    for resp in (wrong, unknown):
+        assert resp.status_code == 200
+        assert BAD_LOGIN in visible_text(resp.get_data(as_text=True))
+    assert visible_text(wrong.get_data(as_text=True)) == visible_text(unknown.get_data(as_text=True))
+    html = wrong.get_data(as_text=True)
+    assert 'value="ayse"' in html  # username kept
+    assert WRONG not in html  # password field emptied
+    assert not _is_logged_in(anon_client)
+
+
+@pytest.mark.parametrize(("username", "password"), [("", PASSWORD), ("ayse", ""), ("   ", PASSWORD)])
+def test_ac5_empty_fields_are_rejected(anon_client, username, password):
+    add_employee(emp_id=1)
+    add_account()
+    resp = _login(anon_client, username=username, password=password)
+    assert resp.status_code == 200
+    assert MISSING in visible_text(resp.get_data(as_text=True))
+    assert not _is_logged_in(anon_client)
+
+
+@pytest.mark.parametrize("next_url", ["https://kotu.example", "//kotu.example", "/\\kotu.example",
+                                      "javascript:alert(1)"])
+def test_ac6_external_next_is_ignored(anon_client, next_url):
+    add_employee(emp_id=1)
+    add_account()
+    resp = _login(anon_client, next_url=next_url)
+    assert resp.status_code == 302
+    assert _location(resp) == ("", "/")
+
+
+def test_ac7_logout_ends_session(anon_client):
+    add_employee(emp_id=1)
+    add_account()
+    _login(anon_client)
+    assert _is_logged_in(anon_client)
+    resp = anon_client.get("/logout")
+    assert _location(resp) == ("", "/login")
+    page = anon_client.get("/login")
+    assert "Çıkış yapıldı." in visible_text(page.get_data(as_text=True))  # noqa: RUF001
+    for path in ("/", "/requests", "/new"):
+        assert _location(anon_client.get(path)) == ("", "/login")
+
+
+def test_ac8_account_without_employee_cannot_log_in(anon_client):
+    add_account(employee_id=42)  # no employee 42
+    resp = _login(anon_client)
+    assert resp.status_code == 200
+    assert BAD_LOGIN in visible_text(resp.get_data(as_text=True))
+    assert not _is_logged_in(anon_client)
