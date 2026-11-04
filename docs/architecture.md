@@ -7,8 +7,8 @@ ve bakiyeleri izler. Tek süreçli bir Flask uygulamasıdır; hedef mimari **kat
 test edilebilir kılan ayrım ([ADR 0001](decisions/0001-layered-monolith.md)).
 
 **Bugünkü durum (bootstrap, 2026-10-23):** her şey tek dosyada, `app.py` içinde. Katmanlar orada sınıf
-olarak var ama sınırlar delik: `LeaveService.status_badge` HTML üretiyor; route'lar `Db`'ye doğrudan
-erişiyor ve iş kuralını (bakiye kontrolü) tekrar ediyor. Veri bellekte duruyor ve her başlatmada
+olarak var ama sınırlar delik: route'lar `Db`'ye doğrudan erişiyor ve iş kuralını (bakiye kontrolü)
+tekrar ediyor. HTML yalnızca `templates/` altındaki şablonlarda üretiliyor (spec 0002). Veri bellekte duruyor ve her başlatmada
 `seed()` ile sıfırlanıyor. Kodu katmanlara bölmek ayrı bir refactor spec'iyle yapılır
 (`workflows/refactor.md`); o zamana kadar yeni kod hedef mimariye uyar.
 
