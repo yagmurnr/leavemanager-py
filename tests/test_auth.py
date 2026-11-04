@@ -271,3 +271,8 @@ def test_menu_shows_name_and_logout_link_when_logged_in(client):
     assert 'href="/logout"' in html
     assert "Menü Kişisi" in visible_text(html)
     assert "Çıkış" in visible_text(html)  # noqa: RUF001
+    # Tie both to the menu: the logout text is the link's own text, and the name is checked on
+    # the request list with no requests, where only the menu can show it (no employee table).
+    assert '<a href="/logout">Çıkış</a>' in html  # noqa: RUF001
+    empty_list = client.get("/requests").get_data(as_text=True)
+    assert "Menü Kişisi" in visible_text(empty_list)
