@@ -28,6 +28,8 @@ Uygulama yalnızca şirket içinde kullanılır ve internete açılmaz. Veri, ki
   (`flask --app app hash-password`) tutulur; dosya depoya girmez (`users.json` gitignore'da,
   biçim `users.example.json`). Oturum çerezi `HttpOnly` ve `SameSite=Lax`; `SECRET_KEY` yoksa
   `python app.py` başlamaz. Hatalı giriş loglanır, kullanıcı adı ve şifre loglanmaz.
+  Oturum sunucu tarafında da doğrulanır: çıkış, o hesabın bütün oturumlarını (kopyalanmış
+  çerezler dahil) geçersiz kılar; uygulama yeniden başlayınca açık oturumlar düşer.
 - **Henüz yok:** rol bazlı yetki. Giriş yapan herkes bütün verileri görür ve herkes adına talep
   girebilir (spec 0004). Formlarda CSRF token'ı yok; `SameSite=Lax` başka siteden gelen POST'a
   oturum çerezini eklemez, tam koruma 0004'e önerildi.

@@ -79,6 +79,7 @@ def client(anon_client):
     app.Db.accounts[TEST_USERNAME] = {"password_hash": "unused", "employee_id": 1}
     with anon_client.session_transaction() as s:
         s["username"] = TEST_USERNAME
+        s["token"] = app.auth.session_token(TEST_USERNAME)
     return anon_client
 
 

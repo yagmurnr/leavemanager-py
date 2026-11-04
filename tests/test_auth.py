@@ -133,6 +133,33 @@ def test_ac7_logout_ends_session(anon_client):
         assert _location(anon_client.get(path)) == ("", "/login")
 
 
+def _replay_cookie(cookie_value):
+    other = app.app.test_client()
+    other.set_cookie("session", cookie_value)
+    return other
+
+
+def test_ac7_copied_cookie_is_rejected_after_logout(anon_client):
+    # Review F-1: logging out must end the session on the server, not only in this browser.
+    add_employee(emp_id=1)
+    add_account()
+    _login(anon_client)
+    stolen = anon_client.get_cookie("session").value
+    assert _is_logged_in(_replay_cookie(stolen))  # the copy works while logged in ...
+    anon_client.get("/logout")
+    assert _location(_replay_cookie(stolen).get("/")) == ("", "/login")  # ... and not after logout
+
+
+def test_sessions_end_when_app_restarts(anon_client, monkeypatch):
+    # Spec 0003 Constraints: restarting the app drops open sessions (review F-1).
+    add_employee(emp_id=1)
+    add_account()
+    _login(anon_client)
+    assert _is_logged_in(anon_client)
+    monkeypatch.setattr(app.auth, "generation", "a-new-process")
+    assert _location(anon_client.get("/")) == ("", "/login")
+
+
 def test_ac8_account_without_employee_cannot_log_in(anon_client):
     add_account(employee_id=42)  # no employee 42
     resp = _login(anon_client)

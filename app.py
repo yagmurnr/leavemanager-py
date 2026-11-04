@@ -5,6 +5,7 @@
 import json
 import logging
 import os
+import secrets
 import sys
 from urllib.parse import urlencode, urlsplit
 
@@ -165,6 +166,10 @@ def hash_password_command():
 class AuthService:
     """Hesap dogrulama; flask'i bilmez, web katmani veriye bunun uzerinden ulasir."""
 
+    def __init__(self):
+        # Surec basina rastgele nesil: uygulama yeniden baslayinca eski oturum cerezleri gecersiz olur.
+        self.generation = secrets.token_hex(16)
+
     def _employee(self, emp_id):
         for e in Db.employees:
             if e["id"] == emp_id:
@@ -177,8 +182,19 @@ class AuthService:
         password_ok = check_password_hash(account["password_hash"] if account else _DUMMY_HASH, password)
         return bool(account and password_ok and self._employee(account["employee_id"]))
 
-    def has_account(self, username):
-        return bool(username) and username in Db.accounts
+    def session_token(self, username):
+        """Oturuma yazilacak nesil ve surum; cikis surumu artirir, eski cerezler gecersiz kalir."""
+        return {"gen": self.generation, "ver": Db.accounts[username].get("session_version", 0)}
+
+    def is_session_valid(self, username, token):
+        account = Db.accounts.get(username) if username else None
+        return bool(account and isinstance(token, dict) and token.get("gen") == self.generation
+                    and token.get("ver") == account.get("session_version", 0))
+
+    def end_sessions(self, username):
+        account = Db.accounts.get(username) if username else None
+        if account:
+            account["session_version"] = account.get("session_version", 0) + 1
 
     def display_name(self, username):
         emp = self._employee(Db.accounts[username]["employee_id"])
@@ -195,16 +211,20 @@ def safe_next(url):
         return "/"
     return url
 
+def current_username():
+    username = session.get("username")
+    return username if auth.is_session_valid(username, session.get("token")) else None
+
 @app.before_request
 def require_login():
-    if request.endpoint in PUBLIC_ENDPOINTS or auth.has_account(session.get("username")):
+    if request.endpoint in PUBLIC_ENDPOINTS or current_username() is not None:
         return None
     return redirect("/login?" + urlencode({"next": request.full_path.rstrip("?")}))
 
 @app.context_processor
 def inject_user():
-    username = session.get("username")
-    return {"user_name": auth.display_name(username) if auth.has_account(username) else None}
+    username = current_username()
+    return {"user_name": auth.display_name(username) if username else None}
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -220,10 +240,12 @@ def login():
         return render_template("login.html", next_url=next_url, username=username, error=BAD_LOGIN)
     session.clear()  # oturum sabitlemeye karsi: girisle yeni oturum
     session["username"] = username
+    session["token"] = auth.session_token(username)
     return redirect(safe_next(next_url))
 
 @app.route("/logout")
 def logout():
+    auth.end_sessions(current_username())  # kopyalanmis cerezler de gecersiz olur
     session.clear()
     flash("Çıkış yapıldı.")  # noqa: RUF001 - Turkish UI text
     return redirect("/login")
