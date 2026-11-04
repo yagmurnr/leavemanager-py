@@ -1,6 +1,6 @@
 # Spec 0001 — İş kuralları için karakterizasyon testleri (BR-1…BR-10)
 
-- Status: In progress
+- Status: Shipped
 - Mode: lite
 - Plan: `specs/plans/0001-plan.md`
 
@@ -54,7 +54,7 @@ Sabit "bugün" = **2026-10-23** (aksi belirtilmedikçe).
 - [x] `scripts/check` green
 - [x] Independent review done; real findings fixed, noise rejected with written rationale
 - [x] Docs / ADRs updated if behavior or architecture changed
-- [ ] Spec moved to `specs/done/` (it becomes immutable there)
+- [x] Spec moved to `specs/done/` (it becomes immutable there)
 
 ## Scorecard (fill at ship — honest numbers make the process improvable)
 | Metric | Value |
