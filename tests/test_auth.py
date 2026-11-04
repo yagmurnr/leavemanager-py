@@ -193,6 +193,14 @@ def test_ac9_passwords_stored_hashed(anon_client, tmp_path):
     assert _login(anon_client, username="duz").status_code == 200  # no such account
 
 
+@pytest.mark.parametrize("content", ["5", "null", "{}", "\"metin\""])
+def test_accounts_file_with_wrong_shape_loads_nothing_without_crashing(tmp_path, content):
+    # Review F-3: a malformed file is logged and ignored (plan R8), never a crash at startup.
+    users = tmp_path / "users.json"
+    users.write_text(content, encoding="utf-8")
+    assert app.load_accounts(str(users)) == {}
+
+
 def test_ac9_password_not_in_logs_or_pages(anon_client, caplog):
     caplog.set_level(logging.DEBUG)
     add_employee(emp_id=1)

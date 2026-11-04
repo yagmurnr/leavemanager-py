@@ -142,6 +142,8 @@ def load_accounts(path):
         with open(path, encoding="utf-8") as f:
             entries = json.load(f)
     except (OSError, ValueError):
+        entries = None
+    if not isinstance(entries, list):
         log.error("Hesap dosyasi okunamadi; hic hesap yuklenmedi")
         return {}
     accounts = {}
