@@ -7,12 +7,13 @@ import logging
 import os
 import secrets
 import sys
+from datetime import date, datetime
+from typing import ClassVar
 from urllib.parse import urlencode, urlsplit
 
 import click
-from flask import Flask, request, redirect, render_template, session, flash
+from flask import Flask, flash, redirect, render_template, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
-from datetime import datetime, date
 
 app = Flask(__name__)
 log = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ class Db:
     requests = []
     next_id = 1
     # kullanici adi -> {"password_hash": ..., "employee_id": ...}; LEAVEMANAGER_USERS dosyasindan yuklenir
-    accounts = {}
+    accounts: ClassVar[dict] = {}
 
 def seed():
     Db.employees = [
