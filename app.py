@@ -133,6 +133,16 @@ MISSING_LOGIN = "Kullanıcı adı ve şifre gerekli."  # noqa: RUF001 - Turkish 
 PUBLIC_ENDPOINTS = {"login", "static"}
 _DUMMY_HASH = generate_password_hash("leavemanager-timing-dummy")
 
+def _is_usable_hash(value):
+    # Yontemi bilinmeyen ya da bozuk hash giriste 500 verir; yuklerken denenir ve reddedilir.
+    if not isinstance(value, str) or value.count("$") < 2:
+        return False
+    try:
+        check_password_hash(value, "")
+    except ValueError:
+        return False
+    return True
+
 def load_accounts(path):
     """Hesap dosyasi (users.example.json bicimi): yalnizca hash'li kayitlar alinir, duz sifre reddedilir."""
     if not path:
@@ -149,7 +159,7 @@ def load_accounts(path):
     accounts = {}
     for i, entry in enumerate(entries):
         if not (isinstance(entry, dict) and isinstance(entry.get("username"), str)
-                and isinstance(entry.get("password_hash"), str) and entry["password_hash"].count("$") >= 2
+                and _is_usable_hash(entry.get("password_hash"))
                 and isinstance(entry.get("employee_id"), int) and "password" not in entry):
             log.error("Hesap dosyasindaki %d. kayit gecersiz (hash yok ya da duz sifre var); atlandi", i + 1)
             continue

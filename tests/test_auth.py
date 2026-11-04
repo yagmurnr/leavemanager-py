@@ -185,6 +185,7 @@ def test_ac9_passwords_stored_hashed(anon_client, tmp_path):
         {"username": "ayse", "password_hash": hashed, "employee_id": 1},
         {"username": "duz", "password": PASSWORD, "employee_id": 1},  # plain text: refused
         {"username": "ornek", "password_hash": "BURAYA: hash", "employee_id": 1},  # placeholder: refused
+        {"username": "bozuk", "password_hash": "foo$bar$baz", "employee_id": 1},  # unknown method: refused
     ]), encoding="utf-8")
     app.Db.accounts = app.load_accounts(str(users))
     assert set(app.Db.accounts) == {"ayse"}
