@@ -1,0 +1,7 @@
+[
+  {
+    "username": "ornek.kullanici",
+    "password_hash": "BURAYA: flask --app app hash-password komutunun ciktisi",
+    "employee_id": 1
+  }
+]

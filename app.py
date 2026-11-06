@@ -2,10 +2,25 @@
 # LeaveManager - Personel Izin Takip Sistemi
 # (c) 2015 - Ic gelistirme. Sorumlu: Ahmet
 # NOT: Bu dosyaya dokunmadan once Ahmet'e sor. (Ahmet 2019'da ayrildi)
-from flask import Flask, request, redirect, render_template
-from datetime import datetime, date
+import json
+import logging
+import os
+import secrets
+import sys
+from datetime import date, datetime
+from typing import ClassVar
+from urllib.parse import urlencode, urlsplit
+
+import click
+from flask import Flask, flash, redirect, render_template, request, session
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
+log = logging.getLogger(__name__)
+# Oturum gizli anahtari koda yazilmaz, ortamdan okunur (docs/security.md, Secrets).
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 # ---------------------------------------------------------------
 # "Veritabani" - simdilik memory'de, sonra SQL'e gecilecek (2016)
@@ -14,6 +29,8 @@ class Db:
     employees = []
     requests = []
     next_id = 1
+    # kullanici adi -> {"password_hash": ..., "employee_id": ...}; LEAVEMANAGER_USERS dosyasindan yuklenir
+    accounts: ClassVar[dict] = {}
 
 def seed():
     Db.employees = [
@@ -109,6 +126,143 @@ svc = LeaveService()
 
 # HTML yalnizca templates/ altindaki Jinja sablonlarinda uretilir; autoescape acik (docs/security.md).
 
+# ---------------------------------------------------------------
+# Giris ve oturum (spec 0003). Rol bazli yetki yok; o spec 0004.
+# ---------------------------------------------------------------
+BAD_LOGIN = "Kullanıcı adı veya şifre hatalı."  # noqa: RUF001 - Turkish UI text
+MISSING_LOGIN = "Kullanıcı adı ve şifre gerekli."  # noqa: RUF001 - Turkish UI text
+PUBLIC_ENDPOINTS = {"login", "static"}
+_DUMMY_HASH = generate_password_hash("leavemanager-timing-dummy")
+
+def _is_usable_hash(value):
+    # Yontemi bilinmeyen ya da bozuk hash giriste 500 verir; yuklerken denenir ve reddedilir.
+    if not isinstance(value, str) or value.count("$") < 2:
+        return False
+    try:
+        check_password_hash(value, "")
+    except ValueError:
+        return False
+    return True
+
+def load_accounts(path):
+    """Hesap dosyasi (users.example.json bicimi): yalnizca hash'li kayitlar alinir, duz sifre reddedilir."""
+    if not path:
+        log.warning("LEAVEMANAGER_USERS tanimli degil; hic hesap yok, kimse giris yapamaz")
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            entries = json.load(f)
+    except (OSError, ValueError):
+        entries = None
+    if not isinstance(entries, list):
+        log.error("Hesap dosyasi okunamadi; hic hesap yuklenmedi")
+        return {}
+    accounts = {}
+    for i, entry in enumerate(entries):
+        if not (isinstance(entry, dict) and isinstance(entry.get("username"), str)
+                and _is_usable_hash(entry.get("password_hash"))
+                and isinstance(entry.get("employee_id"), int) and "password" not in entry):
+            log.error("Hesap dosyasindaki %d. kayit gecersiz (hash yok ya da duz sifre var); atlandi", i + 1)
+            continue
+        accounts[entry["username"]] = {"password_hash": entry["password_hash"],
+                                       "employee_id": entry["employee_id"]}
+    return accounts
+
+Db.accounts = load_accounts(os.environ.get("LEAVEMANAGER_USERS"))
+
+@app.cli.command("hash-password")
+def hash_password_command():
+    """Sifreyi gizli sorar ve hesap dosyasina yazilacak hash'i basar."""
+    password = click.prompt("Sifre", hide_input=True, confirmation_prompt=True)
+    click.echo(generate_password_hash(password))
+
+class AuthService:
+    """Hesap dogrulama; flask'i bilmez, web katmani veriye bunun uzerinden ulasir."""
+
+    def __init__(self):
+        # Surec basina rastgele nesil: uygulama yeniden baslayinca eski oturum cerezleri gecersiz olur.
+        self.generation = secrets.token_hex(16)
+
+    def _employee(self, emp_id):
+        for e in Db.employees:
+            if e["id"] == emp_id:
+                return e
+        return None
+
+    def authenticate(self, username, password):
+        account = Db.accounts.get(username)
+        # Kullanici yoksa da bir hash karsilastirilir; sure farki kullanici adinin varligini ele vermez.
+        password_ok = check_password_hash(account["password_hash"] if account else _DUMMY_HASH, password)
+        return bool(account and password_ok and self._employee(account["employee_id"]))
+
+    def session_token(self, username):
+        """Oturuma yazilacak nesil ve surum; cikis surumu artirir, eski cerezler gecersiz kalir."""
+        return {"gen": self.generation, "ver": Db.accounts[username].get("session_version", 0)}
+
+    def is_session_valid(self, username, token):
+        account = Db.accounts.get(username) if username else None
+        return bool(account and isinstance(token, dict) and token.get("gen") == self.generation
+                    and token.get("ver") == account.get("session_version", 0))
+
+    def end_sessions(self, username):
+        account = Db.accounts.get(username) if username else None
+        if account:
+            account["session_version"] = account.get("session_version", 0) + 1
+
+    def display_name(self, username):
+        emp = self._employee(Db.accounts[username]["employee_id"])
+        return emp["name"] if emp else username
+
+auth = AuthService()
+
+def safe_next(url):
+    # Yalnizca uygulamanin kendi sayfalari; dis adres, "//host" ve ters bolu yok sayilir.
+    if not url or not url.startswith("/") or url.startswith("//") or "\\" in url:
+        return "/"
+    parts = urlsplit(url)
+    if parts.scheme or parts.netloc:
+        return "/"
+    return url
+
+def current_username():
+    username = session.get("username")
+    return username if auth.is_session_valid(username, session.get("token")) else None
+
+@app.before_request
+def require_login():
+    if request.endpoint in PUBLIC_ENDPOINTS or current_username() is not None:
+        return None
+    return redirect("/login?" + urlencode({"next": request.full_path.rstrip("?")}))
+
+@app.context_processor
+def inject_user():
+    username = current_username()
+    return {"user_name": auth.display_name(username) if username else None}
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    next_url = request.values.get("next", "")
+    if request.method == "GET":
+        return render_template("login.html", next_url=next_url, username="")
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "")
+    if not username or not password:
+        return render_template("login.html", next_url=next_url, username=username, error=MISSING_LOGIN)
+    if not auth.authenticate(username, password):
+        log.warning("Hatali giris denemesi")  # kullanici adi ve sifre loglanmaz (kisisel veri)
+        return render_template("login.html", next_url=next_url, username=username, error=BAD_LOGIN)
+    session.clear()  # oturum sabitlemeye karsi: girisle yeni oturum
+    session["username"] = username
+    session["token"] = auth.session_token(username)
+    return redirect(safe_next(next_url))
+
+@app.route("/logout")
+def logout():
+    auth.end_sessions(current_username())  # kopyalanmis cerezler de gecersiz olur
+    session.clear()
+    flash("Çıkış yapıldı.")  # noqa: RUF001 - Turkish UI text
+    return redirect("/login")
+
 @app.route("/")
 def dashboard():
     bekleyen = len([r for r in Db.requests if r["status"] == "Beklemede"])
@@ -153,5 +307,7 @@ def internal_error(error):
     return render_template("error.html"), 500
 
 if __name__ == "__main__":
+    if not app.config["SECRET_KEY"]:
+        sys.exit("SECRET_KEY ortam degiskeni tanimli degil; uygulama baslatilmadi (README, Calistirma).")
     # Debug yalnizca FLASK_DEBUG=1 ortam degiskeniyle, gelistirici makinesinde acilir (docs/security.md).
     app.run(port=5000)

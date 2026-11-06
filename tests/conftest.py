@@ -35,10 +35,22 @@ def frozen_clock(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def empty_db(monkeypatch):
-    """Start every test with no employees and no requests; restored after the test."""
+    """Start every test with no employees, requests or accounts; restored after the test."""
     monkeypatch.setattr(app.Db, "employees", [])
     monkeypatch.setattr(app.Db, "requests", [])
     monkeypatch.setattr(app.Db, "next_id", 1)
+    monkeypatch.setattr(app.Db, "accounts", {})
+
+
+TEST_SECRET_KEY = "test-only-secret-key"  # noqa: S105 - test value, never used outside tests
+TEST_USERNAME = "test.kullanici"
+
+
+@pytest.fixture(autouse=True)
+def secret_key(monkeypatch):
+    """Every test has a session key, also when app.py is started as __main__ (spec 0003, R10)."""
+    monkeypatch.setenv("SECRET_KEY", TEST_SECRET_KEY)
+    monkeypatch.setitem(app.app.config, "SECRET_KEY", TEST_SECRET_KEY)
 
 
 @pytest.fixture
@@ -55,9 +67,20 @@ def svc():
 
 
 @pytest.fixture
-def client():
+def anon_client():
+    """A client that has not logged in."""
     app.app.config["TESTING"] = True
     return app.app.test_client()
+
+
+@pytest.fixture
+def client(anon_client):
+    """A logged-in client (account TEST_USERNAME, employee 1): the pre-login tests run as a user."""
+    app.Db.accounts[TEST_USERNAME] = {"password_hash": "unused", "employee_id": 1}
+    with anon_client.session_transaction() as s:
+        s["username"] = TEST_USERNAME
+        s["token"] = app.auth.session_token(TEST_USERNAME)
+    return anon_client
 
 
 def add_employee(emp_id=1, hire_date=date(2020, 1, 1), name="Test Personel", department="IT"):

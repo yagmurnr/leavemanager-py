@@ -36,7 +36,7 @@ tekrar ediyor. HTML yalnızca `templates/` altındaki şablonlarda üretiliyor (
 
 ## Deliberately out of scope
 - Kalıcı veri saklama (veritabanı). Bugün bellekte; geçiş ayrı bir karar ve ADR gerektirir.
-- Kimlik doğrulama ve yetkilendirme. İlk özellik adayı (`docs/security.md`).
+- Rol bazlı yetkilendirme (kim neyi görür ve girer). Spec 0004; giriş ve oturum spec 0003 ile eklendi (`docs/security.md`).
 - Talep onaylama ve reddetme ekranı. Kodda yok, durumlar yalnızca seed verisinde değişiyor.
 - Resmi tatil takvimi, e-posta bildirimi, raporlama ve dışa aktarma.
 - Devreden izin (`recalculate_year_end`, yorum satırında; bkz. `docs/domain.md` OD-8).

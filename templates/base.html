@@ -3,6 +3,8 @@
 td,th{border:1px solid #ccc;padding:6px 10px} .kutu{display:inline-block;border:1px solid #ccc;padding:10px 20px;margin-right:10px}</style>
 </head><body>
 <h2>LeaveManager</h2>
-<p><a href="/">Ana Sayfa</a> | <a href="/requests">Talepler</a> | <a href="/new">Yeni Talep</a></p>
+{% if user_name %}
+<p><a href="/">Ana Sayfa</a> | <a href="/requests">Talepler</a> | <a href="/new">Yeni Talep</a> | {{ user_name }} (<a href="/logout">Çıkış</a>)</p>
+{% endif %}
 {% block content %}{% endblock %}
 </body></html>
