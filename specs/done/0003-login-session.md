@@ -1,6 +1,6 @@
 # Spec 0003 — Giriş ve oturum
 
-- Status: In progress
+- Status: Shipped
 - Mode: lite
 - Plan: `specs/plans/0003-plan.md`
 
@@ -48,29 +48,29 @@ Bilerek yapılmayanlar:
 - Split: proposed (a) 0003 giriş ve oturum, (b) 0004 rol bazlı görünürlük ve talep yetkisi, (c) 0005 onay ve red ekranı; split applied — yagmur.cilek, 2026-11-04: tek spec 25+ kriter olurdu; giriş, yetki ve onay ayrı yetenekler.
 
 ## Acceptance criteria
-- [ ] AC-1 — Giriş yapmamış bir kullanıcı ana sayfayı, talep listesini ya da yeni talep formunu açtığında giriş ekranına yönlendirilir; yanıtta hiçbir personel adı ya da izin verisi yer almaz.
-- [ ] AC-2 — Giriş yapmamış bir kullanıcının gönderdiği yeni talep formu talep oluşturmaz ve giriş ekranına yönlendirilir.
-- [ ] AC-3 — Doğru kullanıcı adı ve şifreyle giriş yapan kullanıcı, girişten önce açmak istediği sayfaya (yoksa ana sayfaya) yönlendirilir ve menüde bağlı olduğu personelin adını görür.
-- [ ] AC-4 — Yanlış şifre ve var olmayan kullanıcı adı **aynı** "Kullanıcı adı veya şifre hatalı." mesajını verir; kullanıcı giriş yapmamış kalır, kullanıcı adı alanı dolu, şifre alanı boştur.
-- [ ] AC-5 — Kullanıcı adı ya da şifre boş gönderildiğinde "Kullanıcı adı ve şifre gerekli." mesajı gösterilir ve giriş yapılmaz.
-- [ ] AC-6 — Giriş sonrası yönlendirme yalnızca uygulamanın kendi sayfalarına yapılır; giriş formuna verilen dış bir adres (ör. `https://kotu.example`) yok sayılır ve ana sayfaya gidilir.
-- [ ] AC-7 — Çıkış yapan kullanıcı "Çıkış yapıldı." bilgisiyle giriş ekranına döner; ardından açtığı her sayfa yeniden giriş ister.
-- [ ] AC-8 — Bağlı olduğu personel kaydı bulunmayan bir hesapla giriş yapılamaz; AC-4'teki genel mesaj gösterilir.
-- [ ] AC-9 — Şifreler bellekte açık metin olarak tutulmaz; başarılı ya da hatalı giriş sırasında yazılan loglarda ve sayfalarda şifre yer almaz.
-- [ ] AC-10 — Gizli anahtar tanımlı değilken uygulama başlatılmak istendiğinde başlamaz ve gizli anahtarın eksik olduğunu söyleyen bir mesaj verir (anahtarın değeri hiçbir zaman yazdırılmaz).
+- [x] AC-1 — Giriş yapmamış bir kullanıcı ana sayfayı, talep listesini ya da yeni talep formunu açtığında giriş ekranına yönlendirilir; yanıtta hiçbir personel adı ya da izin verisi yer almaz.
+- [x] AC-2 — Giriş yapmamış bir kullanıcının gönderdiği yeni talep formu talep oluşturmaz ve giriş ekranına yönlendirilir.
+- [x] AC-3 — Doğru kullanıcı adı ve şifreyle giriş yapan kullanıcı, girişten önce açmak istediği sayfaya (yoksa ana sayfaya) yönlendirilir ve menüde bağlı olduğu personelin adını görür.
+- [x] AC-4 — Yanlış şifre ve var olmayan kullanıcı adı **aynı** "Kullanıcı adı veya şifre hatalı." mesajını verir; kullanıcı giriş yapmamış kalır, kullanıcı adı alanı dolu, şifre alanı boştur.
+- [x] AC-5 — Kullanıcı adı ya da şifre boş gönderildiğinde "Kullanıcı adı ve şifre gerekli." mesajı gösterilir ve giriş yapılmaz.
+- [x] AC-6 — Giriş sonrası yönlendirme yalnızca uygulamanın kendi sayfalarına yapılır; giriş formuna verilen dış bir adres (ör. `https://kotu.example`) yok sayılır ve ana sayfaya gidilir.
+- [x] AC-7 — Çıkış yapan kullanıcı "Çıkış yapıldı." bilgisiyle giriş ekranına döner; ardından açtığı her sayfa yeniden giriş ister.
+- [x] AC-8 — Bağlı olduğu personel kaydı bulunmayan bir hesapla giriş yapılamaz; AC-4'teki genel mesaj gösterilir.
+- [x] AC-9 — Şifreler bellekte açık metin olarak tutulmaz; başarılı ya da hatalı giriş sırasında yazılan loglarda ve sayfalarda şifre yer almaz.
+- [x] AC-10 — Gizli anahtar tanımlı değilken uygulama başlatılmak istendiğinde başlamaz ve gizli anahtarın eksik olduğunu söyleyen bir mesaj verir (anahtarın değeri hiçbir zaman yazdırılmaz).
 
 ## Definition of Done
-- [ ] Every acceptance criterion mapped to proof (test or reproducible observation)
-- [ ] `scripts/check` green
-- [ ] Independent review done; real findings fixed, noise rejected with written rationale
-- [ ] Docs / ADRs updated if behavior or architecture changed
-- [ ] Spec moved to `specs/done/` (it becomes immutable there)
+- [x] Every acceptance criterion mapped to proof (test or reproducible observation)
+- [x] `scripts/check` green
+- [x] Independent review done; real findings fixed, noise rejected with written rationale
+- [x] Docs / ADRs updated if behavior or architecture changed
+- [x] Spec moved to `specs/done/` (it becomes immutable there)
 
 ## Scorecard (fill at ship — honest numbers make the process improvable)
 | Metric | Value |
 |---|---|
-| Spec revisions | |
-| Fix rounds | |
-| Review findings: real / noise | |
-| Regressions introduced | |
-| Bugs escaped to production | |
+| Spec revisions | 0 |
+| Fix rounds | 3 |
+| Review findings: real / noise | 7 / 0 (review); QA gaps 4 / 1 |
+| Regressions introduced | 0 |
+| Bugs escaped to production | — (henüz canlıda değil) |
