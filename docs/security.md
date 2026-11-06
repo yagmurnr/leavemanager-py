@@ -15,11 +15,12 @@ Uygulama yalnızca şirket içinde kullanılır ve internete açılmaz. Veri, ki
 - Hata mesajlarında stack trace, iç hata kodu, dosya yolu ya da kişisel veri gösterilmez.
 - Debug modu yalnızca bir ortam değişkeniyle (ör. `FLASK_DEBUG=1`) ve sadece geliştirici makinesinde açılır; kodda `debug=True` yasaktır (ruff `S201`).
 - **Bilinen açıklar (bugünkü `app.py`):**
-  1. **Kayıtlı XSS:** talepteki "Neden" alanı, personel adı ve diğer veriler escape edilmeden basılıyor (`body|safe`).
-  2. **`debug=True` kalıcı:** ağdan erişilebilirse Werkzeug debugger üzerinden uzaktan kod çalıştırma riski var.
-  3. **Kimlik doğrulama yok** (aşağıda).
+  1. ~~**Kayıtlı XSS**~~ — kapatıldı (spec 0002): sayfalar `templates/` altındaki autoescape'li şablonlardan üretiliyor.
+  2. ~~**`debug=True` kalıcı**~~ — kapatıldı (spec 0002): debug yalnızca `FLASK_DEBUG=1` ile açılıyor; beklenmeyen hata genel bir sayfa gösteriyor. `S201` taban çizgisinden silindi.
+  3. **Kimlik doğrulama yok** (aşağıda; spec 0003).
 
   Her biri bir spec ile kapatılır. Kapatılana kadar uygulama `localhost` dışına açılmaz.
+  Hata mesajındaki iç kod ve dahili telefon (`ERR-412 … dahili 4127`) hâlâ duruyor; `docs/domain.md` OD-7 ile kapanır.
 
 ## AuthN / AuthZ
 - **Bugün:** kimlik doğrulama yok. Sayfaya ulaşabilen herkes, herhangi bir personel adına talep girebilir.

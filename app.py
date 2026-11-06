@@ -2,7 +2,7 @@
 # LeaveManager - Personel Izin Takip Sistemi
 # (c) 2015 - Ic gelistirme. Sorumlu: Ahmet
 # NOT: Bu dosyaya dokunmadan once Ahmet'e sor. (Ahmet 2019'da ayrildi)
-from flask import Flask, request, redirect, render_template_string
+from flask import Flask, request, redirect, render_template
 from datetime import datetime, date
 
 app = Flask(__name__)
@@ -105,52 +105,28 @@ class LeaveService:
             # loglanacak
             return True
 
-    def status_badge(self, status):
-        # renkler: UI isi ama burada pratik oluyor
-        color = "#999"
-        if status == "Onaylandi":
-            color = "green"
-        if status.lower() == "beklemede":
-            color = "orange"
-        if status == "Reddedildi":
-            color = "red"
-        return "<b style='color:%s'>%s</b>" % (color, status)
-
 svc = LeaveService()
 
-PAGE = """
-<html><head><meta charset="utf-8"><title>LeaveManager</title>
-<style>body{font-family:Arial;margin:30px} table{border-collapse:collapse}
-td,th{border:1px solid #ccc;padding:6px 10px} .kutu{display:inline-block;border:1px solid #ccc;padding:10px 20px;margin-right:10px}</style>
-</head><body>
-<h2>LeaveManager</h2>
-<p><a href="/">Ana Sayfa</a> | <a href="/requests">Talepler</a> | <a href="/new">Yeni Talep</a></p>
-{{ body|safe }}
-</body></html>
-"""
+# HTML yalnizca templates/ altindaki Jinja sablonlarinda uretilir; autoescape acik (docs/security.md).
 
 @app.route("/")
 def dashboard():
     bekleyen = len([r for r in Db.requests if r["status"] == "Beklemede"])
     onaylanan = len([r for r in Db.requests if r["status"] == "Onaylandi"])
     reddedilen = len([r for r in Db.requests if r["status"] == "Reddedildi"])
-    body = "<div class='kutu'>Bekleyen: <b>%d</b></div><div class='kutu'>Onaylanan: <b>%d</b></div><div class='kutu'>Reddedilen: <b>%d</b></div>" % (bekleyen, onaylanan, reddedilen)
-    body += "<h3>Personel Bakiyeleri</h3><table><tr><th>Ad</th><th>Birim</th><th>Hak</th><th>Kullanilan</th><th>Kalan</th></tr>"
-    for e in Db.employees:
-        body += "<tr><td>%s</td><td>%s</td><td>%d</td><td>%d</td><td>%d</td></tr>" % (
-            e["name"], e["department"], svc.get_entitlement(e), svc.get_used_days(e["id"]), svc.get_remaining(e))
-    body += "</table>"
-    return render_template_string(PAGE, body=body)
+    rows = [{"name": e["name"], "department": e["department"], "entitlement": svc.get_entitlement(e),
+             "used": svc.get_used_days(e["id"]), "remaining": svc.get_remaining(e)} for e in Db.employees]
+    return render_template("dashboard.html", bekleyen=bekleyen, onaylanan=onaylanan,
+                           reddedilen=reddedilen, rows=rows)
 
 @app.route("/requests")
 def list_requests():
-    body = "<h3>Izin Talepleri</h3><table><tr><th>Personel</th><th>Baslangic</th><th>Bitis</th><th>Gun</th><th>Neden</th><th>Durum</th></tr>"
+    rows = []
     for r in Db.requests:
         emp = [e for e in Db.employees if e["id"] == r["employee_id"]][0]
-        body += "<tr><td>%s</td><td>%s</td><td>%s</td><td>%d</td><td>%s</td><td>%s</td></tr>" % (
-            emp["name"], r["start"], r["end"], svc.calc_days(r["start"], r["end"]), r["reason"], svc.status_badge(r["status"]))
-    body += "</table>"
-    return render_template_string(PAGE, body=body)
+        rows.append({"name": emp["name"], "start": r["start"], "end": r["end"],
+                     "days": svc.calc_days(r["start"], r["end"]), "reason": r["reason"], "status": r["status"]})
+    return render_template("requests.html", rows=rows)
 
 @app.route("/new", methods=["GET", "POST"])
 def new_request():
@@ -163,20 +139,19 @@ def new_request():
             days = (end - start).days + 1
             # bakiye kontrolu (serviste de var ama formda erken uyari iyi oluyor)
             if svc.get_remaining(emp) < days:
-                return render_template_string(PAGE, body="<p style='color:red'>HATA: ERR-412 NullReferenceGibi - bakiye yetersiz. IT'ye bildirin: dahili 4127</p>")
+                return render_template("new_request.html", error="HATA: ERR-412 NullReferenceGibi - bakiye yetersiz. IT'ye bildirin: dahili 4127")
             svc.create_request(emp_id, start, end, request.form.get("reason", ""))
             return redirect("/requests")
         except Exception:
             # loglanacak
             return redirect("/requests")
-    options = "".join("<option value='%d'>%s</option>" % (e["id"], e["name"]) for e in Db.employees)
-    body = """<h3>Yeni Talep</h3><form method="post">
-    Personel: <select name="employee_id">%s</select><br><br>
-    Baslangic: <input type="date" name="start"><br><br>
-    Bitis: <input type="date" name="end"><br><br>
-    Neden: <input type="text" name="reason"><br><br>
-    <input type="submit" value="Kaydet"></form>""" % options
-    return render_template_string(PAGE, body=body)
+    return render_template("new_request.html", employees=Db.employees)
+
+@app.errorhandler(500)
+def internal_error(error):
+    # Flask hatayi zaten logluyor; kullaniciya ic ayrinti gosterilmez (docs/conventions.md, Error handling).
+    return render_template("error.html"), 500
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)  # debug acik kalsin, kolay oluyor
+    # Debug yalnizca FLASK_DEBUG=1 ortam degiskeniyle, gelistirici makinesinde acilir (docs/security.md).
+    app.run(port=5000)

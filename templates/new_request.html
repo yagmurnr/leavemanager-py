@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+{% if error %}
+<p style='color:red'>{{ error }}</p>
+{% else %}
+<h3>Yeni Talep</h3><form method="post">
+    Personel: <select name="employee_id">{% for e in employees %}<option value='{{ e.id }}'>{{ e.name }}</option>{% endfor %}</select><br><br>
+    Baslangic: <input type="date" name="start"><br><br>
+    Bitis: <input type="date" name="end"><br><br>
+    Neden: <input type="text" name="reason"><br><br>
+    <input type="submit" value="Kaydet"></form>
+{% endif %}
+{% endblock %}

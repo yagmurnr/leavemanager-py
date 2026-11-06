@@ -7,5 +7,5 @@ select = ["E4", "E7", "E9", "F", "W", "I", "UP", "B", "BLE", "S", "RUF"]
 [lint.per-file-ignores]
 # Taban çizgisi (bootstrap 2026-10-23): app.py'nin mevcut bulguları. Yeni kod bu muafiyetlerden
 # yararlanamaz. app.py'ye dokunan her spec, düzelttiği kuralı bu listeden SİLER; liste sadece kısalır.
-"app.py" = ["UP009", "I001", "RUF012", "BLE001", "UP031", "RUF015", "S201"]
+"app.py" = ["UP009", "I001", "RUF012", "BLE001", "RUF015"]
 "tests/**" = ["S101"]

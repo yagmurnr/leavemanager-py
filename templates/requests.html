@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+{% set status_colors = {"Onaylandi": "green", "Beklemede": "orange", "Reddedildi": "red"} %}
+<h3>Izin Talepleri</h3><table><tr><th>Personel</th><th>Baslangic</th><th>Bitis</th><th>Gun</th><th>Neden</th><th>Durum</th></tr>
+{% for row in rows %}
+<tr><td>{{ row.name }}</td><td>{{ row.start }}</td><td>{{ row.end }}</td><td>{{ row.days }}</td><td>{{ row.reason }}</td><td><b style='color:{{ status_colors.get(row.status, "#999") }}'>{{ row.status }}</b></td></tr>
+{% endfor %}
+</table>
+{% endblock %}
